@@ -1,0 +1,19 @@
+{
+  "name": "linkedin-scraper-stage2",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "scrape": "node src/index.js",
+    "test:xpaths": "node src/dev/inspect-xpaths.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.48.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.11.1"
+  }
+}

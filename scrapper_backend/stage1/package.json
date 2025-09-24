@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "playwright": "^1.40.0",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "@supabase/supabase-js": "^2.43.0"
   },
   "keywords": ["playwright", "linkedin", "automation", "login"],
   "author": "",
