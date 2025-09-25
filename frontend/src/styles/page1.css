@@ -1,0 +1,132 @@
+:root{
+  --bg-start: #ffffff;
+  --bg-end: #f4f7ff;
+  --card-bg: #ffffff;
+  --accent: #2f6bed;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --border: rgba(11,22,50,0.04);
+  --radius: 12px;
+}
+
+/* page shell stronger */
+.page1 {
+  padding:40px 20px;
+  min-height:calc(100vh - 40px);
+  background: linear-gradient(180deg,var(--bg-start) 0%, var(--bg-end) 100%);
+  color: #071129;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* hero/card */
+.page1 .hero { max-width:1100px; margin:0 auto 18px auto; display:block; }
+.page1 .card {
+  background: linear-gradient(180deg,#fff,#fbfdff);
+  padding:22px;
+  border-radius:var(--radius);
+  box-shadow: 0 12px 30px rgba(10,20,40,0.06);
+  border: 1px solid var(--border);
+}
+
+/* accent */
+.page1 .accent { color:var(--accent); font-weight:800; }
+
+/* form inputs (basic) */
+.auth-form label { display:block; margin-top:12px; font-weight:700; color:#253141; }
+.auth-form input[type="text"], .auth-form select {
+  display:block;
+  width:100%;
+  padding:10px 12px;
+  margin-top:6px;
+  border-radius:10px;
+  border:1px solid rgba(11,22,50,0.06);
+  background:#fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+/* buttons */
+.btn { padding:9px 12px; border-radius:10px; border:0; font-weight:800; cursor:pointer; }
+.btn-primary { background:var(--accent); color:#fff; box-shadow: 0 10px 26px rgba(47,107,237,0.12); }
+.btn-ghost { background:transparent; color:var(--accent); border:1px solid rgba(47,107,237,0.12); }
+
+/* accounts dropdown area */
+.accounts-dropdown { margin-top:14px; position:relative; display:flex; gap:8px; align-items:center; }
+.accounts-dropdown .btn { min-width:120px; }
+
+/* list panel */
+.accounts-list {
+  position:absolute;
+  top:48px;
+  left:0;
+  width:420px;
+  max-height:360px;
+  overflow:auto;
+  background:var(--card-bg);
+  border-radius:10px;
+  box-shadow:0 18px 40px rgba(10,20,40,0.08);
+  border:1px solid var(--border);
+  z-index:80;
+  padding:8px;
+}
+
+/* account item */
+.account-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  background:transparent;
+  text-align:left;
+  cursor:pointer;
+  transition: transform .08s ease, box-shadow .08s ease, background .08s ease;
+  margin-bottom:8px;
+}
+.account-item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(10,20,40,0.06); }
+
+/* conditional colorings for rows */
+.account-item.active { background: rgba(22,163,74,0.06); border:1px solid rgba(22,163,74,0.10); }
+.account-item.temp { background: rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.10); }
+.account-item.flagged { background: rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.10); }
+
+.account-name { font-weight:800; color:#071129; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px; }
+
+/* small status dot */
+.status-dot { width:12px; height:12px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,0.06); margin-left:8px; }
+.status-dot.active { background:var(--success); }
+.status-dot.temp { background:var(--warning); }
+.status-dot.flagged { background:var(--danger); }
+
+/* legend / small notice */
+.accounts-note { margin-top:12px; font-size:13px; color:var(--muted); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.legend { display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:10px; background:#fff; border:1px solid rgba(11,22,50,0.02); }
+.legend .dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
+.dot--active { background:var(--success); }
+.dot--temp { background:var(--warning); }
+.dot--flagged { background:var(--danger); }
+
+/* style status select */
+.status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(11,22,50,0.06);
+  background: linear-gradient(180deg,#fff,#fbfdff);
+  font-weight:700;
+  color:#071129;
+  background-image: linear-gradient(45deg,transparent 50%, var(--muted) 50%), linear-gradient(135deg,var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+/* small responsive */
+@media (max-width:900px) {
+  .accounts-list { width: calc(100vw - 32px); left:8px; right:8px; }
+  .account-name { max-width: 60%; }
+}

@@ -1,0 +1,14 @@
+.page2 {
+  padding:36px 20px;
+  background: linear-gradient(180deg,#fffaf8 0%, #fbfbfd 100%);
+  min-height:calc(100vh - 40px);
+}
+.page2 .grid {
+  display:grid;
+  grid-template-columns: 1fr 340px;
+  gap:18px;
+  max-width:1100px;
+  margin:0 auto;
+}
+.page2 .card { padding:18px; border-radius:12px; }
+.page2 .muted { color:#6b7280; }
