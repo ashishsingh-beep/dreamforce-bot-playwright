@@ -267,8 +267,10 @@ async function main() {
         // Save to Supabase (optional if creds provided)
         try {
           if (process.env.SUPABASE_URL && (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY)) {
-            const saveRes = await saveAllLeads(collectedLeads);
-            console.log(`[${nowTs()}] Saved/Upserted ${saveRes.inserted} leads to Supabase (table all_leads).`);
+            const userId = process.env.SCRAPE_USER_ID || null; // optional override
+            const tag = process.env.SCRAPE_TAG || null; // optional tag to group this run
+            const saveRes = await saveAllLeads(collectedLeads, userId, tag);
+            console.log(`[${nowTs()}] Saved/Upserted ${saveRes.inserted} leads to Supabase (table all_leads). userId=${userId || 'default'} tag=${tag || 'null'}`);
           } else {
             console.log(`[${nowTs()}] Supabase env not configured; skipping remote save.`);
           }

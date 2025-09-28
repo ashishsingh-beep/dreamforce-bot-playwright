@@ -13,18 +13,24 @@ export function getSupabase() {
   return supabase;
 }
 
-export async function saveAllLeads(leads) {
+export async function saveAllLeads(leads, userId = null, tag = null) {
   if (!Array.isArray(leads) || !leads.length) return { inserted: 0 };
   const client = getSupabase();
-  // Expect table all_leads with columns: lead_id, linkedin_url, bio, scrapped (optional boolean default false)
+  // Expect table all_leads with columns: lead_id, linkedin_url, bio, scrapped, user_id, tag
+  const effectiveUserId = userId || '1ff7317c-f2e0-44b2-a2d5-766a57a176a0';
   const payload = leads.map(l => ({
     lead_id: l.lead_id,
     linkedin_url: l.linkedin_url,
     bio: l.bio,
-    scrapped: false
+    scrapped: false,
+    user_id: userId || effectiveUserId,
+    tag: tag || "HEHE"
   }));
 
-  const { data, error } = await client.from('all_leads').upsert(payload, { onConflict: 'lead_id' }).select('lead_id');
+  const { data, error } = await client
+    .from('all_leads')
+    .upsert(payload, { onConflict: 'lead_id' })
+    .select('lead_id');
   if (error) throw error;
   return { inserted: data.length };
 }
