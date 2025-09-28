@@ -6,12 +6,15 @@
   "main": "src/stage1.js",
   "scripts": {
     "start": "node src/stage1.js",
+    "server": "node src/server.js",
     "test": "HEADLESS=false node src/stage1.js"
   },
   "dependencies": {
     "playwright": "^1.40.0",
     "dotenv": "^16.3.1",
-    "@supabase/supabase-js": "^2.43.0"
+    "@supabase/supabase-js": "^2.43.0",
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
   },
   "keywords": ["playwright", "linkedin", "automation", "login"],
   "author": "",
