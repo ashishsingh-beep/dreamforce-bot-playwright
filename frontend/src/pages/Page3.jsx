@@ -208,7 +208,8 @@ export default function Page3() {
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [pollTimer, setPollTimer] = useState(null);
-  const scrapeApi = import.meta.env.VITE_STAGE2_API || 'http://localhost:4002';
+  // Unified server: prefer VITE_STAGE2_API, else unified base, else legacy 4002
+  const scrapeApi = (import.meta.env.VITE_STAGE2_API || import.meta.env.VITE_BACKEND_BASE || 'http://localhost:4000');
   const [purging, setPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState(null);
   const [purgeCount, setPurgeCount] = useState(null);
@@ -253,7 +254,7 @@ export default function Page3() {
     if (!jobs.length) { setErrors({ leads: 'No urls to assign' }); return; }
     setSubmitting(true);
     try {
-      const res = await fetch(`${scrapeApi}/stage2/scrape-batch`, {
+  const res = await fetch(`${scrapeApi.replace(/\/$/, '')}/stage2/scrape-batch`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobs, options: { headless: false } })
       });
       const json = await res.json();
@@ -267,7 +268,7 @@ export default function Page3() {
     if (!jobId) return;
     const t = setInterval(async () => {
       try {
-        const r = await fetch(`${scrapeApi}/stage2/jobs/${jobId}`);
+  const r = await fetch(`${scrapeApi.replace(/\/$/, '')}/stage2/jobs/${jobId}`);
         const j = await r.json();
         if (r.ok) {
           setJobStatus(j);

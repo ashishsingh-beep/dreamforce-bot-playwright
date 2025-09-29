@@ -284,7 +284,9 @@ export default function Page2() {
         tag: tag || 'not_defined',
         userId,
       };
-      const res = await fetch(`${import.meta.env.VITE_SCRAPE_API || 'http://localhost:4001'}/scrape`, {
+  // Unified server support: prefer explicit stage1 var, then unified base, finally legacy port 4001
+  const stage1Base = (import.meta.env.VITE_SCRAPE_API || import.meta.env.VITE_BACKEND_BASE || 'http://localhost:4000');
+  const res = await fetch(`${stage1Base.replace(/\/$/, '')}/scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
