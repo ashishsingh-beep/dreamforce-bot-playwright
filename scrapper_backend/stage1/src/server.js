@@ -76,5 +76,12 @@ app.post('/scrape', async (req, res) => {
 });
 
 const port = process.env.PORT || 4001;
-app.get('/health', (_req, res) => res.json({ ok: true }));
-app.listen(port, () => console.log(`[server] Stage1 scrape API listening on :${port}`));
+app.get('/health', (_req, res) => res.json({ ok: true, running }));
+
+// Only start server if this file is the entrypoint
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+  app.listen(port, () => console.log(`[server] Stage1 scrape API listening on :${port}`));
+}
+
+export function isStage1Running() { return running; }
+export default app;
