@@ -21,21 +21,35 @@ npm install
 
 3. Provide input URLs in `src/urls.sample.json` or pass via CLI.
 
+The script now explicitly loads `.env` from the project root, so you can run it from any working directory (e.g. project root or inside `src/`). If required env vars are missing it will exit with a clear message. Sessions are intentionally NOT persisted; every run starts with a clean browser profile (no cached cookies or local storage) to ensure a fresh login each time.
+
 ## Run
-- Default run (reads from `src/urls.sample.json`):
+-- Default run (reads from `src/urls.sample.json`):
 ```
 npm run scrape
 ```
 
-- With custom URLs file:
+-- With custom URLs file:
 ```
-node src/index.js src/my-urls.json
+node src/stage2.js src/my-urls.json
 ```
 
-- Headed mode for debugging:
+-- Headed mode for debugging:
 ```
 HEADLESS=false npm run scrape
 ```
+
+## Required Environment Variables
+The following are required and validated on startup:
+- LINKEDIN_EMAIL
+- LINKEDIN_PASSWORD
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+
+Optional (defaults shown if omitted):
+- HEADLESS (true)
+- SLOW_MO (75)
+- OUTPUT_JSON (unset)
 
 ## Notes
 - Respect LinkedIn's Terms of Service and robots.txt. This code is for educational purposes.

@@ -295,7 +295,12 @@ export default function Page3() {
           <div className="purge-banner">
             <div className="pb-left">
               <div className="pb-title">Pre-Scrape Data Purge Required</div>
-              <div className="pb-text">Run this purge once per session to remove irrelevant Wildnet profiles (non executive / non leadership) so they are not allocated to accounts. Batch scraping is disabled until you purge.</div>
+              <div className="pb-text">Run this purge once per session to remove leads you do NOT want to spend scrape cycles on. It deletes:
+                <ul className="pb-list">
+                  <li>Leads already working at Wildnet (company contains "wildnet")</li>
+                  <li>Leads in non–decision-making / non–leadership roles (e.g. excludes Founder, CEO, Co-Founder, Director, Head, VP, President)</li>
+                </ul>
+                Batch scraping is disabled until you purge.</div>
               <div className="pb-meta">
                 {purgedThisSession ? (
                   <span className="ok">Purged{purgeCount!=null?` ${purgeCount} rows`:''} at {lastPurgeTs && new Date(lastPurgeTs).toLocaleString()}</span>
@@ -307,14 +312,9 @@ export default function Page3() {
             </div>
           </div>
           <h2>Stage2 Multi-Account Scraper</h2>
-          <p className="muted small">Parallel across accounts, sequential within each account. Scrapes only unscripted (scrapped=false) leads.</p>
 
           <section className="card">
             <h3>Accounts</h3>
-            <div className="purge-notice">
-              <strong>Important:</strong> Before starting a scrape, press the <em>"Purge Non-Exec Wildnet Leads"</em> button in the Run section below <u>at least once</u> this session. This removes irrelevant Wildnet rows so the scraper skips unnecessary profiles and saves time.
-              {purgeCount !== null && <span className="purge-count"> Last purge deleted {purgeCount} rows.</span>}
-            </div>
             <div className="flex-row gap-sm">
               <label>Mode<br/>
                 <select value={mode} onChange={e=>{ setMode(e.target.value); setAccountCount(1); }}>

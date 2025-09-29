@@ -1,7 +1,19 @@
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import { chromium, devices } from 'playwright';
 import { setupStealthContext } from '../utils/stealth.js';
 import { loginLinkedIn } from '../utils/login.js';
+
+// Ensure env loads regardless of CWD
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '..', '..', '.env');
+dotenv.config({ path: envPath });
+if (!process.env.LINKEDIN_EMAIL || !process.env.LINKEDIN_PASSWORD) {
+  console.error(`Missing LINKEDIN_EMAIL or LINKEDIN_PASSWORD in ${envPath}`);
+  process.exit(1);
+}
 
 const XPATHS = {
   name: "//h1[contains(@class, 't-24')]",

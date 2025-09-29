@@ -94,6 +94,8 @@ input:focus, select:focus { outline:2px solid #0d766e33; border-color:#0d766e; }
 .purge-banner .pb-left {flex:1; min-width:0;}
 .purge-banner .pb-title {font-size:1.05rem; font-weight:600; letter-spacing:.5px; margin-bottom:.35rem; color:#fff;}
 .purge-banner .pb-text {font-size:.8rem; line-height:1.25rem; color:#d8cfff; max-width:840px;}
+.purge-banner .pb-text .pb-list {margin:.45rem 0 .1rem 1.1rem; padding:0; list-style:disc;}
+.purge-banner .pb-text .pb-list li {margin:0 0 .25rem; padding:0;}
 .purge-banner .pb-meta {margin-top:.6rem; font-size:.75rem;}
 .purge-banner .pb-meta .ok {color:#34d399; font-weight:600;}
 .purge-banner .pb-meta .warn {color:#fbbf24; font-weight:600;}

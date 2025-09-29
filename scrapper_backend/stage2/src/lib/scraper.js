@@ -32,7 +32,6 @@ export async function runLinkedInScraper({
   urls,
   headless = String(process.env.HEADLESS || 'true') === 'true',
   slowMo = Number(process.env.SLOW_MO || 75),
-  userDataDir = process.env.USER_DATA_DIR || null,
   pace = { minMs: 60000, maxMs: 85000 },
   saveToSupabase = true,
   writeJson = true,
@@ -53,20 +52,11 @@ export async function runLinkedInScraper({
     ]
   };
 
-  let browser; let context;
-  if (userDataDir) {
-    context = await chromium.launchPersistentContext(userDataDir, {
-      ...launchOpts,
-      viewport: { width: 1366, height: 768 },
-      userAgent: devices['Desktop Chrome'].userAgent,
-    });
-  } else {
-    browser = await chromium.launch(launchOpts);
-    context = await browser.newContext({
-      viewport: { width: 1366, height: 768 },
-      userAgent: devices['Desktop Chrome'].userAgent,
-    });
-  }
+  const browser = await chromium.launch(launchOpts);
+  const context = await browser.newContext({
+    viewport: { width: 1366, height: 768 },
+    userAgent: devices['Desktop Chrome'].userAgent,
+  });
 
   await setupStealthContext(context);
   const page = await context.newPage();
@@ -119,7 +109,7 @@ export async function runLinkedInScraper({
     if (verbose) console.warn(`[${nowTs()}] Wrote failures JSON ${failFile}`);
   }
 
-  if (browser) await browser.close(); else await context.close();
+  await browser.close();
 
   return { successes, failures, jsonPath };
 }
