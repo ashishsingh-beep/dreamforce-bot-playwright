@@ -5,8 +5,17 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain.output_parsers import PydanticOutputParser
+# make a supabase client if needed
+from supabase import create_client, Client
+
+
 
 load_dotenv()
+
+
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_ANON_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)    
 
 # ----- Schemas -----
 class GeminiScoreResponse(BaseModel):
@@ -19,11 +28,11 @@ class GeminiMessageResponse(BaseModel):
     MESSAGE: str = Field(..., description="A personalized outreach message for the lead, within 50-70 words.")
 
 # Load company context
-with open("stages/wildnetEdge.txt", "r") as f:
-    wildnet_edge_data = f.read()
+# with open("stages/wildnetEdge.txt", "r") as f:
+#     wildnet_edge_data = f.read()
 
 # ----- Core function -----
-def process_lead(lead_info: dict, api_key: str) -> dict:
+def process_lead(lead_info: dict, api_key: str, wildnet_data, scoring_criteria_and_ICP, message_prompt) -> dict:
     """
     1. Score lead (GeminiScoreResponse) using existing scoring prompt (unchanged).
     2. If score >= 50 generate SUBJECT + MESSAGE (GeminiMessageResponse).
@@ -41,26 +50,19 @@ def process_lead(lead_info: dict, api_key: str) -> dict:
 
     scoring_system_msg = SystemMessage(content=f"""
 You are an expert lead qualifier. We (WildnetEdge) as a company offer the following services to our clients:
-WildnetEdge: ```{wildnet_edge_data}```
+WildnetEdge: ```{wildnet_data}```
 
-Your task is to evaluate each lead's potential whether they are a potential buyer of our (wildnetEdge's) salesforce service or whether they are potential seller of salesforce services like us (WildnetEdge). Refer following points to identify if they are a potential buyer and score on that basis:
-Score the lead on a scale of 1-100 based on crieteria 1 and 2 and then multiply with a multiplier based on criteria 3 to get the final score:
-Criteria - 1: The lead must be at the position of some authority like Manager, Sr. Manager, Director, Head, VP, C-suites, founder, etc. not at employee level (like Developer, Analyst, etc.). Give extra points and mention explicitly if they are in IT Department but only if they are among mentioned positions. (High weightage)
-Criteria - 2: The COMPANY at which the lead is working MUST not offer IT or software services like WildnetEdge. In other words the industry of their company must not fall under "IT or software service" or any services that are mentioned above within triple backticks i.e. their company should not be our direct competitior or ours. Aditionally and VERY IMPORTANTLY, their company should not be a partner or reseller of Salesforce like us. Note: Your your intelligence and provided context about lead to evaluate what their company does, in case if you can't find out what their company does, just mention it in your response and give the score between 40-60 given 1st point is satisfied i.e. lead is at one of the mentioned position in company. Don't make any assumption (Very High Weightage)
-Criteria - 3: This criteria is based on lead's location. After scoring based on above two criteria, apply following multiplier to the score:
-- If lead's location is in USA, Canada, UK, Germany, Italy, France, Netherlands, Switzerland, Sweden, Ireland, Australia, Singapore - multiply the score by 1
-- If lead's location is in India, UAE, Saudi Arabia, Israel, Qatar, Egypt - multiply the score by 0.8
-- If lead's location is in any other country - multiply the score by 0.5
-For ex. if lead scores 70 based on first two criteria and is located in USA, final score will be 70*1=70, if lead is located in India, final score will be 70*0.8=56 and if lead is located in any other country, final score will be 70*0.5=35.
+Scoring criteria and ICP:
+```{scoring_criteria_and_ICP}```
 """)
 
     scoring_human_msg = HumanMessage(content=f"""
 Evaluate this lead for potential:
-{lead_info}
+Lead Info: ```{lead_info}```
 
 Should we approach this lead? Score the leads based on above rule (0-100) and explain your reasoning and lead's location based on how well they match our services. Keep the score criteria strict and give high score only to those who fulfill all the criteria to a good extent.
 
-{score_format}
+Score format: ```{score_format}```
 """)
 
     score_raw = scoring_llm.invoke([scoring_system_msg, scoring_human_msg])
@@ -84,8 +86,10 @@ Should we approach this lead? Score the leads based on above rule (0-100) and ex
         message_system = SystemMessage(content=f"""
 You are an expert SDR crafting concise personalized outreach.
 Company context (WildnetEdge services):
-```{wildnet_edge_data}```
-Produce a compelling subject (5-7 words) and a personalized message (50-70 words) tailored to the lead.
+```{wildnet_data}```
+
+Message prompt:
+```{message_prompt}```
 """)
 
         message_human = HumanMessage(content=f"""
@@ -116,9 +120,29 @@ Generate outreach.
         "subject": subject
     }
 
-# Optional batch helper
-def process_leads(leads, api_key: str):
-    return [process_lead(ld, api_key) for ld in leads]
+# # Optional batch helper
+def process_leads(leads, api_key: str, wildnet_data, scoring_criteria_and_ICP, message_prompt):
+    llm_responses = []
+    for ld in leads:
+        print(f"Processing lead {ld.get('lead_id')} - {ld.get('name')}")
+        result = process_lead(ld, api_key, wildnet_data, scoring_criteria_and_ICP, message_prompt)
+        if result:
+            try:
+                supabase.table("llm_response").insert(result).execute()
+            except Exception as e:
+                print(f"Error inserting lead {ld.get('lead_id')}: {e}")
+            llm_responses.append(result)
+
+            try:
+                supabase.table("lead_details").update({"send_to_llm": True}).eq("lead_id", ld.get("lead_id")).execute()
+            except Exception as e:
+                print(f"Error updating lead {ld.get('lead_id')}: {e}")
+            llm_responses.append(result)
+        else:
+            print(f"Failed to process lead {ld.get('lead_id')}")
+    return llm_responses
+
+    # return [process_lead(ld, api_key) for ld in leads]
 
 # if __name__ == "__main__":
 #     # Simple manual test placeholder
