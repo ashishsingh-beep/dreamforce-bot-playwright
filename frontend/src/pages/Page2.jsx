@@ -28,6 +28,7 @@ export default function Page2() {
   const [dashDateTo, setDashDateTo] = useState('');
   const [dashTags, setDashTags] = useState([]); // selected tags
   const [availableTags, setAvailableTags] = useState([]); // all distinct tags for user
+  const NULL_TAG_LABEL = '(No Tag)';
   const [dashLoading, setDashLoading] = useState(false);
   const [dashError, setDashError] = useState(null);
   const [dashRows, setDashRows] = useState([]);
@@ -84,14 +85,17 @@ export default function Page2() {
       const { data, error } = await query;
       if (error) throw error;
       // Deduplicate & normalize (trim) in case backend distinct isn't effective or tags vary by whitespace
+      let sawNull = false;
       const tagSet = new Set();
       (data || []).forEach(r => {
         const raw = r.tag;
-        if (!raw) return;
+        if (raw == null) { sawNull = true; return; }
         const cleaned = String(raw).trim();
-        if (cleaned) tagSet.add(cleaned);
+        if (!cleaned) { sawNull = true; return; }
+        tagSet.add(cleaned);
       });
       const tags = Array.from(tagSet).sort((a,b)=>a.localeCompare(b));
+      if (sawNull) tags.unshift(NULL_TAG_LABEL);
       setAvailableTags(tags);
     } catch (err) {
       console.error('Load tags error', err.message);
@@ -129,7 +133,17 @@ export default function Page2() {
       if (dashScrapped === 'true') query = query.eq('scrapped', true);
       else if (dashScrapped === 'false') query = query.eq('scrapped', false);
       if (dashTags.length) {
-        query = query.in('tag', dashTags);
+        const hasNull = dashTags.includes(NULL_TAG_LABEL);
+        const real = dashTags.filter(t => t !== NULL_TAG_LABEL);
+        if (hasNull && real.length) {
+          // Build OR expression: tag.in.(...), tag.is.null, tag.eq. (empty string)
+          const inList = real.map(t => `"${t.replace(/"/g,'\\"')}"`).join(',');
+          query = query.or(`tag.in.(${inList}),tag.is.null,tag.eq.`);
+        } else if (hasNull) {
+          query = query.or('tag.is.null,tag.eq.');
+        } else {
+          query = query.in('tag', real);
+        }
       }
       // Sorting
       query = query.order('created_at', { ascending: dashSort.direction !== 'desc' });
@@ -178,7 +192,18 @@ export default function Page2() {
         .lte('created_at', toUtc.toISOString());
       if (dashScrapped === 'true') query = query.eq('scrapped', true);
       else if (dashScrapped === 'false') query = query.eq('scrapped', false);
-      if (dashTags.length) query = query.in('tag', dashTags);
+      if (dashTags.length) {
+        const hasNull = dashTags.includes(NULL_TAG_LABEL);
+        const real = dashTags.filter(t => t !== NULL_TAG_LABEL);
+        if (hasNull && real.length) {
+          const inList = real.map(t => `"${t.replace(/"/g,'\\"')}"`).join(',');
+          query = query.or(`tag.in.(${inList}),tag.is.null,tag.eq.`);
+        } else if (hasNull) {
+          query = query.or('tag.is.null,tag.eq.');
+        } else {
+          query = query.in('tag', real);
+        }
+      }
       query = query.order('created_at', { ascending: false });
       const { data, error } = await query;
       if (error) throw error;

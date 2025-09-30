@@ -216,6 +216,126 @@ export default function Page3() {
   const [purgedThisSession, setPurgedThisSession] = useState(false);
   const [lastPurgeTs, setLastPurgeTs] = useState(null);
 
+  // -------------------- Stage2 Dashboard State --------------------
+  const [dashDateFrom, setDashDateFrom] = useState('');
+  const [dashDateTo, setDashDateTo] = useState('');
+  const [dashTags, setDashTags] = useState([]); // selected tags
+  const [dashAvailableTags, setDashAvailableTags] = useState([]); // all distinct tags for user/date
+  const dashSelectAllRef = useRef(null);
+  const [dashSentToLlm, setDashSentToLlm] = useState('all'); // all | true | false
+  const [dashLocation, setDashLocation] = useState('');
+  const [dashPage, setDashPage] = useState(1);
+  const [dashPageSize, setDashPageSize] = useState(25);
+  const [dashTotal, setDashTotal] = useState(0);
+  const [dashRows, setDashRows] = useState([]);
+  const [dashLoading, setDashLoading] = useState(false);
+  const [dashError, setDashError] = useState(null);
+  const DASH_MAX_EXPORT = 5000; // safety guard
+  // Separate dropdown state for dashboard tags to avoid reusing scraper's tagDropdownOpen
+  const [dashTagDropdownOpen, setDashTagDropdownOpen] = useState(false);
+
+  // Initialize dashboard dates on first activation
+  useEffect(() => {
+    if (activeTab === 'dashboard' && !dashDateFrom && !dashDateTo) {
+      const { from, to } = initLast7();
+      setDashDateFrom(from); setDashDateTo(to);
+    }
+  }, [activeTab, dashDateFrom, dashDateTo]);
+
+  // Tag loading for dashboard (distinct tags for user within date range)
+  const loadDashTags = useCallback(async () => {
+    if (!supabase || !userId || !dashDateFrom || !dashDateTo) return;
+    try {
+      const fromUtc = new Date(`${dashDateFrom}T00:00:00Z`).toISOString();
+      const toUtc = new Date(`${dashDateTo}T23:59:59Z`).toISOString();
+      const { data, error } = await supabase
+        .from('all_leads')
+        .select('tag')
+        .eq('user_id', userId)
+        .gte('created_at', fromUtc)
+        .lte('created_at', toUtc);
+      if (error) throw error;
+      const setUnique = new Set();
+      (data || []).forEach(r => { const t=(r.tag||'').trim(); if(t) setUnique.add(t); });
+      const arr = Array.from(setUnique).sort((a,b)=>a.localeCompare(b));
+      setDashAvailableTags(arr);
+      setDashTags(prev => prev.filter(t => arr.includes(t)));
+    } catch (e) {
+      console.warn('dash tags load error', e.message);
+    }
+  }, [supabase, userId, dashDateFrom, dashDateTo]);
+  useEffect(() => { if (activeTab==='dashboard') loadDashTags(); }, [activeTab, loadDashTags]);
+
+  // Manage indeterminate state for dashboard tag select all
+  useEffect(() => {
+    if (dashSelectAllRef.current) {
+      const all = dashAvailableTags.length; const sel = dashTags.length;
+      dashSelectAllRef.current.indeterminate = sel > 0 && sel < all;
+    }
+  }, [dashAvailableTags, dashTags]);
+
+  const fetchDashboard = useCallback(async (opts={}) => {
+    if (!supabase || !userId || !dashDateFrom || !dashDateTo) return;
+    const nextPage = opts.page || dashPage;
+    const nextPageSize = opts.pageSize || dashPageSize;
+    setDashLoading(true); setDashError(null);
+    try {
+      const { data, error } = await supabase.rpc('fetch_stage2_dashboard', {
+        _date_from: dashDateFrom,
+        _date_to: dashDateTo,
+        _tags: dashTags.length ? dashTags : null,
+        _sent_to_llm: dashSentToLlm === 'all' ? null : (dashSentToLlm === 'true'),
+        _location: dashLocation ? dashLocation.trim() : null,
+        _page: nextPage,
+        _page_size: nextPageSize
+      });
+      if (error) throw error;
+      const row = data && data[0];
+      setDashTotal(row?.total_count || 0);
+      setDashRows(Array.isArray(row?.rows) ? row.rows : []);
+      setDashPage(nextPage); setDashPageSize(nextPageSize);
+    } catch (e) {
+      setDashError(e.message);
+    } finally { setDashLoading(false); }
+  }, [supabase, userId, dashDateFrom, dashDateTo, dashTags, dashSentToLlm, dashLocation, dashPage, dashPageSize]);
+
+  function resetDashboardPagination() { setDashPage(1); }
+
+  async function exportDashCsv() {
+    if (!supabase || !userId || !dashDateFrom || !dashDateTo) return;
+    try {
+      const { data, error } = await supabase.rpc('fetch_stage2_dashboard', {
+        _date_from: dashDateFrom,
+        _date_to: dashDateTo,
+        _tags: dashTags.length ? dashTags : null,
+        _sent_to_llm: dashSentToLlm === 'all' ? null : (dashSentToLlm === 'true'),
+        _location: dashLocation ? dashLocation.trim() : null,
+        _page: 1,
+        _page_size: Math.min(dashTotal || DASH_MAX_EXPORT, DASH_MAX_EXPORT)
+      });
+      if (error) throw error;
+      const row = data && data[0];
+      const rows = Array.isArray(row?.rows) ? row.rows : [];
+      const headers = ['lead_id','tag','name','title','location','company_name','experience','skills','bio','profile_url','company_page_url','send_to_llm','lead_created_at'];
+      const csvLines = [headers.join(',')];
+      rows.forEach(r => {
+        const line = headers.map(h => {
+          const val = r[h] == null ? '' : String(r[h]).replace(/"/g,'""');
+          return `"${val}"`;
+        }).join(',');
+        csvLines.push(line);
+      });
+      const blob = new Blob([csvLines.join('\n')], { type:'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `stage2_dashboard_${dashDateFrom}_${dashDateTo}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setDashError(e.message);
+    }
+  }
+
   async function purgeNonExecutiveWildnet() {
     if (!supabase) return;
     if (!confirm('This will permanently delete matching leads. Continue?')) return;
@@ -474,7 +594,114 @@ export default function Page3() {
         </div>
       )}
       {activeTab==='dashboard' && (
-        <div className="card mt-md"><h2>Dashboard (Coming Soon)</h2><p className="small muted">Stage2 dashboard not implemented yet.</p></div>
+        <div className="card mt-md">
+          <h2>Stage2 Dashboard</h2>
+          <div className="flex-row gap-sm wrap mt-sm">
+            <label>Date From<br/>
+              <input type="date" value={dashDateFrom} onChange={e=>{ setDashDateFrom(e.target.value); resetDashboardPagination(); }} />
+            </label>
+            <label>Date To<br/>
+              <input type="date" value={dashDateTo} onChange={e=>{ setDashDateTo(e.target.value); resetDashboardPagination(); }} />
+            </label>
+            <div className="tag-filter">
+              <label>Tags<br/>
+                <button
+                  type="button"
+                  className="btn outline"
+                  disabled={!dashAvailableTags.length && !dashTags.length}
+                  onClick={()=> setDashTagDropdownOpen(o=>!o)}
+                >
+                  {dashTags.length ? `${dashTags.length} selected` : 'Select Tags'}
+                </button>
+              </label>
+              {dashTagDropdownOpen && activeTab==='dashboard' && (
+                <div className="tag-dropdown" style={{ zIndex:120 }}>
+                  <div className="tag-dropdown-header">
+                    <label><input type="checkbox" ref={dashSelectAllRef} checked={dashAvailableTags.length>0 && dashTags.length===dashAvailableTags.length} onChange={(e)=>{ if(e.target.checked) setDashTags([...dashAvailableTags]); else setDashTags([]); }} /> Select All</label>
+                  </div>
+                  <div className="tag-options">
+                    {dashAvailableTags.map(t => (
+                      <label key={t} className="tag-option">
+                        <input type="checkbox" checked={dashTags.includes(t)} onChange={(e)=>{ if(e.target.checked) setDashTags(prev=>[...prev,t]); else setDashTags(prev=>prev.filter(x=>x!==t)); }} /> {t}
+                      </label>
+                    ))}
+                    {!dashAvailableTags.length && <div className="empty small">No tags</div>}
+                  </div>
+                  <div className="dropdown-actions"><button className="btn xs" type="button" onClick={()=>{ setDashTagDropdownOpen(false); }}>Close</button></div>
+                </div>
+              )}
+            </div>
+            <label>send_to_llm<br/>
+              <select value={dashSentToLlm} onChange={e=>{ setDashSentToLlm(e.target.value); resetDashboardPagination(); }}>
+                <option value="all">All</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+              </select>
+            </label>
+            <label>Location<br/>
+              <input type="text" placeholder="substring" value={dashLocation} onChange={e=>{ setDashLocation(e.target.value); resetDashboardPagination(); }} />
+            </label>
+            <button type="button" className="btn primary self-end" disabled={dashLoading || !dashDateFrom || !dashDateTo} onClick={()=>{ fetchDashboard({ page:1 }); loadDashTags(); }}> {dashLoading ? 'Loading...' : 'Apply'} </button>
+            <button type="button" className="btn self-end" disabled={dashLoading || !dashTotal} onClick={exportDashCsv}>Export CSV</button>
+          </div>
+          {dashError && <div className="error-text small mt-sm">{dashError}</div>}
+          <div className="small mt-xs">Rows: {dashRows.length} / Total: {dashTotal} {dashTotal > DASH_MAX_EXPORT && <span style={{color:'#b45309'}}> (export capped at {DASH_MAX_EXPORT})</span>}</div>
+          <div className="mt-sm" style={{ overflowX:'auto' }}>
+            <table className="data-table small">
+              <thead>
+                <tr>
+                  <th>lead_id</th>
+                  <th>tag</th>
+                  <th>name</th>
+                  <th>title</th>
+                  <th>location</th>
+                  <th>company_name</th>
+                  <th>experience</th>
+                  <th>skills</th>
+                  <th>bio</th>
+                  <th>profile</th>
+                  <th>company</th>
+                  <th>send_to_llm</th>
+                  <th>lead_created_at</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashRows.map(r => (
+                  <tr key={r.lead_id}>
+                    <td>{r.lead_id}</td>
+                    <td>{r.tag}</td>
+                    <td className="truncate" title={r.name}>{r.name}</td>
+                    <td className="truncate" title={r.title}>{r.title}</td>
+                    <td className="truncate" title={r.location}>{r.location}</td>
+                    <td className="truncate" title={r.company_name}>{r.company_name}</td>
+                    <td className="truncate" title={r.experience}>{r.experience}</td>
+                    <td className="truncate" title={r.skills}>{r.skills}</td>
+                    <td className="truncate" title={r.bio}>{r.bio}</td>
+                    <td>{r.profile_url && <a href={r.profile_url} target="_blank" rel="noreferrer">link</a>}</td>
+                    <td>{r.company_page_url && <a href={r.company_page_url} target="_blank" rel="noreferrer">site</a>}</td>
+                    <td>{String(r.send_to_llm)}</td>
+                    <td title={r.lead_created_at}>{r.lead_created_at?.slice(0,19).replace('T',' ')}</td>
+                  </tr>
+                ))}
+                {!dashRows.length && !dashLoading && (
+                  <tr><td colSpan={13} className="empty">No data</td></tr>
+                )}
+                {dashLoading && (
+                  <tr><td colSpan={13} className="loading">Loading…</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="pagination-row mt-sm">
+            <button type="button" className="btn xs" disabled={dashPage<=1 || dashLoading} onClick={()=>fetchDashboard({ page: dashPage-1 })}>Prev</button>
+            <span className="small">Page {dashPage} / {Math.max(1, Math.ceil(dashTotal / dashPageSize))}</span>
+            <button type="button" className="btn xs" disabled={dashPage >= Math.ceil(dashTotal / dashPageSize) || dashLoading} onClick={()=>fetchDashboard({ page: dashPage+1 })}>Next</button>
+            <select className="page-size" value={dashPageSize} disabled={dashLoading} onChange={e=>{ fetchDashboard({ page:1, pageSize: Number(e.target.value) }); }}>
+              {[10,25,50,100].map(sz => <option key={sz} value={sz}>{sz} / page</option>)}
+            </select>
+            <span className="small muted">Total: {dashTotal}</span>
+          </div>
+        </div>
       )}
     </div>
   );
