@@ -9,9 +9,8 @@ const supabase = supabaseUrl && supabaseAnon ? createClient(supabaseUrl, supabas
 
 function FieldError({ msg }) { if (!msg) return null; return <div style={{ color: 'red', fontSize: 12 }}>{msg}</div>; }
 
-export default function Page2() {
-  // Tab state: 'scraper' | 'dashboard'
-  const [activeTab, setActiveTab] = useState('scraper');
+export default function Stage1() {
+  // Page2 now ONLY shows the dashboard (scraper tab removed)
   // Auth user (needs to be before any hook using userId)
   const [userId, setUserId] = useState(null);
   useEffect(() => {
@@ -59,12 +58,12 @@ export default function Page2() {
 
   // Initialize date range on first dashboard activation
   useEffect(() => {
-    if (activeTab === 'dashboard' && !dashDateFrom && !dashDateTo) {
+    if (!dashDateFrom && !dashDateTo) {
       const { fromStr, toStr } = initLast7DaysIST();
       setDashDateFrom(fromStr);
       setDashDateTo(toStr);
     }
-  }, [activeTab, dashDateFrom, dashDateTo]);
+  }, [dashDateFrom, dashDateTo]);
 
   // Fetch distinct tags for this user (optionally filtered by date range once set)
   const loadTags = useCallback(async () => {
@@ -102,7 +101,7 @@ export default function Page2() {
     }
   }, [dashDateFrom, dashDateTo, supabase, userId, dashScrapped]);
 
-  useEffect(() => { if (activeTab === 'dashboard') loadTags(); }, [activeTab, loadTags]);
+  useEffect(() => { loadTags(); }, [loadTags]);
 
   // Manage indeterminate state for Select All tags
   useEffect(() => {
@@ -309,8 +308,10 @@ export default function Page2() {
         tag: tag || 'not_defined',
         userId,
       };
-  // Unified server support: prefer explicit stage1 var, then unified base, finally legacy port 4001
-  const stage1Base = (import.meta.env.VITE_SCRAPE_API || import.meta.env.VITE_BACKEND_BASE || 'http://localhost:4000');
+      // Unified server support: prefer explicit stage1 var, then unified base, finally legacy port 4001
+      const stage1Base = window.dreamforceBridge 
+        ? (await window.dreamforceBridge.getBackendUrl('scraper')) || 'http://localhost:4000'
+        : (import.meta.env.VITE_SCRAPE_API || import.meta.env.VITE_BACKEND_BASE || 'http://localhost:4000');
   const res = await fetch(`${stage1Base.replace(/\/$/, '')}/scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,97 +328,8 @@ export default function Page2() {
 
   return (
     <div className="scraper-page container">
-      <div className="tabs-row">
-        <button type="button" onClick={()=>setActiveTab('scraper')} className={`tab-btn ${activeTab==='scraper' ? 'active' : ''}`}>Scraper</button>
-        <button type="button" onClick={()=>setActiveTab('dashboard')} className={`tab-btn ${activeTab==='dashboard' ? 'active' : ''}`}>Dashboard</button>
-      </div>
-      {activeTab === 'scraper' && <h2>Scraper</h2>}
-      {activeTab === 'scraper' && (
-      <form onSubmit={handleSubmit} className="scrape-form">
-        <fieldset className="card">
-          <legend>LinkedIn Credentials</legend>
-          <div className="radio-row">
-            <label><input type="radio" value="manual" checked={emailMode==='manual'} onChange={()=>setEmailMode('manual')} /> Manual</label>
-            <label><input type="radio" value="stored" checked={emailMode==='stored'} onChange={()=>setEmailMode('stored')} /> From Accounts Table</label>
-          </div>
-          {emailMode === 'manual' && (
-            <div className="grid-2">
-              <div>
-                <label>Email<br/><input type="email" value={manualEmail} onChange={e=>setManualEmail(e.target.value)} /></label>
-                <FieldError msg={errors.manualEmail} />
-              </div>
-              <div>
-                <label>Password<br/><input type="password" value={manualPassword} onChange={e=>setManualPassword(e.target.value)} /></label>
-                <FieldError msg={errors.manualPassword} />
-              </div>
-            </div>
-          )}
-          {emailMode === 'stored' && (
-            <div className="grid-2">
-              <div>
-                <label>Status<br/>
-                  <select value={accountStatus} onChange={e=>{ setAccountStatus(e.target.value); setAccountEmail(''); }}>
-                    <option value="active">active</option>
-                    <option value="temp">temp</option>
-                    <option value="flagged">flagged</option>
-                  </select>
-                </label>
-              </div>
-              <div>
-                <label>Email<br/>
-                  <select value={accountEmail} onChange={e=>setAccountEmail(e.target.value)}>
-                    <option value="">-- select --</option>
-                    {accounts.map(a => <option key={a.email_id} value={a.email_id}>{a.email_id}</option>)}
-                  </select>
-                </label>
-                <FieldError msg={errors.accountEmail} />
-              </div>
-              {errors.storedPassword && <FieldError msg={errors.storedPassword} />}
-              <p className="hint span-2">Password is applied automatically and not displayed.</p>
-            </div>
-          )}
-          <FieldError msg={errors.userId} />
-        </fieldset>
-
-        <fieldset className="card">
-            <legend>Search Target</legend>
-            <div className="flex-row">
-              <div className="flex-1">
-                <label>Keyword<br/>
-                  <input type="text" value={keyword} onChange={e=>setKeyword(e.target.value)} disabled={!!searchUrl} placeholder="e.g. ai engineer" />
-                </label>
-              </div>
-              <div className="flex-1">
-                <label>Search URL<br/>
-                  <input type="text" value={searchUrl} onChange={e=>setSearchUrl(e.target.value)} disabled={!!keyword} placeholder="https://www.linkedin.com/search/results/content/..." />
-                </label>
-              </div>
-            </div>
-            <FieldError msg={errors.search} />
-            <div className="mt-sm">
-              <label>Duration (seconds)<br/>
-                <input type="number" min={0} value={durationSec} onChange={e=>setDurationSec(e.target.value)} />
-              </label>
-              <FieldError msg={errors.duration} />
-            </div>
-            <div className="mt-sm">
-              <label>Tag (optional)<br/>
-                <input type="text" value={tag} onChange={e=>setTag(e.target.value)} placeholder="campaign-tag" />
-              </label>
-            </div>
-        </fieldset>
-
-        <div className="actions"><button className="btn primary" type="submit" disabled={submitting || !userId}>{submitting ? 'Running...' : 'Run Scrape'}</button></div>
-  </form>
-  )}
-
-      {activeTab === 'scraper' && result && (
-        <div className="card result-card mt-lg">
-          <h3>Result</h3>
-          <pre className="code-block">{JSON.stringify(result, null, 2)}</pre>
-        </div>
-      )}
-      {activeTab === 'dashboard' && (
+      <h2>Lead Collection Dashboard</h2>
+      <p className="muted small" style={{marginTop:4}}>Scraper functionality has been removed. This page now only shows collected leads.</p>
         <div className="dashboard-wrapper mt-sm">
           <h2>Dashboard</h2>
           <p className="muted small">Date From: {dashDateFrom || '...'} Date To: {dashDateTo || '...'} Rows: {dashRows.length} / Total: {dashTotal}</p>
@@ -531,7 +443,6 @@ export default function Page2() {
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }

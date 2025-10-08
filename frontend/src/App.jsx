@@ -4,11 +4,12 @@ import { supabase } from "./services/supabaseClient";
 import LoginForm from "./components/LoginForm";
 import SignupForm from "./components/SignupForm";
 import Navbar from "./components/Navbar";
-import Page1 from "./pages/Page1";
-import Page2 from "./pages/Page2";
-import Page3 from "./pages/Page3";
-import Page4 from "./pages/Page4";
-import Page5 from "./pages/Page5";
+import Accounts from "./pages/Page1";
+import Request from "./pages/Request";
+import Stage1 from "./pages/Page2";
+import Stage2 from "./pages/Page3";
+import Stage3 from "./pages/Page4";
+import RemoteAccess from "./pages/Page5";
 import ForgotPasswordForm from "./components/ForgotPasswordForm";
 import ResetPasswordForm from "./components/ResetPasswordForm";
 
@@ -44,18 +45,18 @@ function App() {
       {session && <Navbar session={session} />}
 
       <Routes>
-        {/* Auth routes: redirect to /page1 if already logged in */}
+        {/* Auth routes: redirect to /request if already logged in */}
         <Route
           path="/login"
-          element={session ? <Navigate to="/page1" replace /> : <LoginForm setIsLoggedIn={handleAuth} />}
+          element={session ? <Navigate to="/request" replace /> : <LoginForm setIsLoggedIn={handleAuth} />}
         />
         <Route
           path="/sign-up"
-          element={session ? <Navigate to="/page1" replace /> : <SignupForm setIsLoggedIn={handleAuth} />}
+          element={session ? <Navigate to="/request" replace /> : <SignupForm setIsLoggedIn={handleAuth} />}
         />
         <Route
           path="/forgot-password"
-          element={session ? <Navigate to="/page1" replace /> : <ForgotPasswordForm />}
+          element={session ? <Navigate to="/request" replace /> : <ForgotPasswordForm />}
         />
 
 
@@ -64,30 +65,28 @@ function App() {
           path="/reset-password"
           element={session ? <ResetPasswordForm /> : <Navigate to="/login" replace />}
         />
-        <Route
-          path="/page1"
-          element={session ? <Page1 /> : <Navigate to="/login" replace />}
-        />
+        <Route path="/request" element={session ? <Request /> : <Navigate to="/login" replace />} />
+  <Route path="/page1" element={session ? <Accounts /> : <Navigate to="/login" replace />} />
         <Route
           path="/page2"
-          element={session ? <Page2 /> : <Navigate to="/login" replace />}
+          element={session ? <Stage1 /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/page3"
-          element={session ? <Page3 /> : <Navigate to="/login" replace />}
+          element={session ? <Stage2 /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/page4"
-          element={session ? <Page4 /> : <Navigate to="/login" replace />}
+          element={session ? <Stage3 /> : <Navigate to="/login" replace />}
         />
         <Route
           path="/page5"
-          element={session ? <Page5 /> : <Navigate to="/login" replace />}
+          element={session ? <RemoteAccess /> : <Navigate to="/login" replace />}
         />
 
-        {/* Root / fallback */}
-        <Route path="/" element={<Navigate to={session ? "/page1" : "/login"} replace />} />
-        <Route path="*" element={<Navigate to={session ? "/page1" : "/login"} replace />} />
+  {/* Root / fallback now point to /request */}
+  <Route path="/" element={<Navigate to={session ? "/request" : "/login"} replace />} />
+  <Route path="*" element={<Navigate to={session ? "/request" : "/login"} replace />} />
       </Routes>
       {console.log("env:", import.meta.env)}
     </>

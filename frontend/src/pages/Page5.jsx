@@ -9,7 +9,7 @@ import config from "../../config/config";
 const DEFAULT_ADDRESS = config.defaultAnyDeskAddress || "1 196 364 788";
 const DEFAULT_PASSWORD = config.defaultAnyDeskPassword || "remote@123";
 
-function Page5() {
+function RemoteAccess() {
   const [message, setMessage] = useState(null);
 
   const copyToClipboard = async (text, label) => {
@@ -128,4 +128,4 @@ function Page5() {
   );
 }
 
-export default Page5;
+export default RemoteAccess;

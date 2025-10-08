@@ -37,13 +37,17 @@ function Navbar({ session }) {
   return (
     <header className="navbar">
       <div className="nav-left">
-        <Link to="/page1" className="logo">
+        <Link to="/request" className="logo">
           <img src="/vite.svg" alt="logo" className="logo-img" />
           <span className="brand">{config.appTitle}</span>
         </Link>
       </div>
 
       <nav className="nav-links" aria-label="Main navigation">
+        <NavLink to="/request" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+          Request
+        </NavLink>
+
         <NavLink to="/page1" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
           Add Linkedin Accounts
         </NavLink>
@@ -65,13 +69,13 @@ function Navbar({ session }) {
 
           <div className="dropdown-menu" role="menu">
             <NavLink to="/page2" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
-              Lead Scout - Step 1
+              Stage 1 - Lead Scout
             </NavLink>
             <NavLink to="/page3" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
-              Lead Enrichment - Step 2
+              Stage 2 - Enrichment
             </NavLink>
             <NavLink to="/page4" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
-              Lead Filtration - Step 3
+              Stage 3 - Filtration
             </NavLink>
           </div>
         </div>

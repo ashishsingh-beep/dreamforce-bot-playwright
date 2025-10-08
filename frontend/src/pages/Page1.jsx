@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import "../styles/page1.css";
 import { supabase } from "../services/supabaseClient";
 
-function Page1() {
+function Accounts() {
   const [emailId, setEmailId] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("temp");
@@ -22,6 +22,10 @@ function Page1() {
   const [listOpen, setListOpen] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const listRef = useRef(null);
+
+  // bulk update state
+  const [bulkStatusTarget, setBulkStatusTarget] = useState("active");
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -192,6 +196,38 @@ function Page1() {
     }
   };
 
+  // Bulk update handler: set status for all accounts older than 24h
+  const handleBulkUpdate = async () => {
+    clearMessages();
+    if (!createdBy) {
+      setErr("You must be signed in to perform bulk updates.");
+      return;
+    }
+    const confirmText = `Change status to "${bulkStatusTarget}" for ALL accounts older than 24 hours? This cannot be undone.`;
+    if (!window.confirm(confirmText)) return;
+
+    setBulkLoading(true);
+    try {
+      // compute ISO string for 24h ago
+      const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from("accounts")
+        .update({ status: bulkStatusTarget })
+        .lt("created_at", threshold);
+      if (error) throw error;
+      setMsg(`Bulk update complete. Accounts older than 24h set to ${bulkStatusTarget}.`);
+      fetchAccountsList();
+    } catch (e) {
+      setErr(e?.message || "Bulk update failed.");
+    } finally {
+      setBulkLoading(false);
+      setTimeout(() => {
+        setMsg(null);
+        setErr(null);
+      }, 5000);
+    }
+  };
+
   return (
     <div className="page1">
       <div className="hero">
@@ -207,9 +243,38 @@ function Page1() {
             <li>After the account is created, add the account's email and password to the form below to save it in the "accounts" table.</li>
           </ol>
 
-          {/* <p className="muted" style={{ marginTop: 8 }}>
-            Note: temporary accounts can be useful for testing. Storing passwords in plaintext is insecure — consider hashing/encryption for production.
-          </p> */}
+          {/* Bulk status update section */}
+          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--border-color)", borderRadius: 8 }}>
+            <h3 style={{ marginTop: 0 }}>Bulk status update (older than 24h)</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <label style={{ display: "flex", flexDirection: "column", fontSize: 12 }}>
+                Target status
+                <select
+                  className="status-select"
+                  value={bulkStatusTarget}
+                  onChange={(e) => setBulkStatusTarget(e.target.value)}
+                  style={{ minWidth: 140 }}
+                  disabled={bulkLoading}
+                >
+                  <option value="active">active</option>
+                  <option value="temp">temp</option>
+                  <option value="flagged">flagged</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={bulkLoading}
+                onClick={handleBulkUpdate}
+              >
+                {bulkLoading ? "Updating..." : "Apply to old accounts"}
+              </button>
+              <span className="muted" style={{ fontSize: 12 }}>
+                Applies to all rows where created_at is older than 24h.
+              </span>
+            </div>
+          </div>
+          {/* end bulk status update */}
 
           {/* accounts dropdown (color coded) */}
           <div style={{ marginTop: 12 }} ref={listRef}>
@@ -374,4 +439,4 @@ function Page1() {
   );
 }
 
-export default Page1;
+export default Accounts;
